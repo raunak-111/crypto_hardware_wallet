@@ -128,7 +128,7 @@ def load_wallet_with_pin(usb_path):
             bytes.fromhex(encrypted_wallet['tag'])
         )
     except ValueError:
-        print("Decryption failed: MAC check failed")
+        print("Decryption failed: MAC check failed. Please try again. Incorrect PIN?")
         return None
     wallet_info = {
         "seed_phrase": encrypted_wallet['seed_phrase'],
@@ -138,20 +138,32 @@ def load_wallet_with_pin(usb_path):
     print(f"Wallet with public key {wallet_info['public_key']} loaded successfully!")
     return wallet_info
 
+
+
+
 def main():
     usb_path = '/media/aryandev/GPARTED-LIV'
-    wallet_info = load_wallet_with_pin(usb_path)
-    if wallet_info is None:
-       create_new_wallet(usb_path)
-       wallet_info = load_wallet_with_pin(usb_path)
-    else:
-       print(f"Loading wallet with public key {wallet_info['public_key']}")
-       print("Loading the wallet for transactions...")
-       wallet_info = load_wallet_with_pin(usb_path)
-       if wallet_info:
-        # Example transaction signing using the loaded wallet
-         transaction_data = "Alice sent 10 BTC to Bob"
-         signature = sign_transaction(wallet_info["private_key"], transaction_data)
-         print(f"Transaction Signature: {signature.hex()}")
+    
+    while True:
+        display_menu()
+        choice = input("Please select an option (1-3): ").strip()
+        if choice == '1':
+            create_new_wallet(usb_path)
+        elif choice == '2':
+            wallet_info = load_wallet_with_pin(usb_path)
+            if wallet_info:
+                # Example transaction signing using the loaded wallet
+                transaction_data = "Alice sent 10 BTC to Bob"
+                signature = sign_transaction(wallet_info["private_key"], transaction_data)
+                print(f"Transaction Signature: {signature.hex()}")
+        elif choice == '3':
+            print("Exiting the wallet dashboard. Goodbye!")
+            break
+        else:
+            print("Invalid option. Please select a valid option (1-3).")
+
+
+
+    
 if __name__ == "__main__":
     main()
