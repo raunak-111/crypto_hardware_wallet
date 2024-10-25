@@ -6,14 +6,14 @@ class KeyManagement:
         cipher=AES.new(self.aes_key, AES.MODE_EAX)
         nonce = cipher.nonce
         ciphertext, tag = cipher.encrypt_and_digest(private_key.encode())
-        # Log the values
-        print(f"Encryption - Nonce: {nonce}, Tag: {tag}, Ciphertext: {ciphertext}")
+        print("encrypted private key:",ciphertext)
+        
+       
         return nonce, ciphertext, tag
     def decrypt_key(self, nonce, ciphertext, tag):
         cipher = AES.new(self.aes_key, AES.MODE_EAX, nonce=nonce)
     
-        #Log the values before decryption
-        print(f"Decryption - Nonce: {nonce}, Tag: {tag}, Ciphertext: {ciphertext}")
+        
     
         try:
             private_key = cipher.decrypt_and_verify(ciphertext, tag)
