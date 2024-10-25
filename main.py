@@ -8,6 +8,7 @@ from getpass import getpass
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
+
 #Task-
 #1-Main function task is to generate the private key using ecdsa-we are using ecdsa because  bitcoin and ethereum used ecdsa .
 #2-encrypt the private key using AES.
@@ -20,7 +21,7 @@ seed_words = ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape",
               "kiwi", "lemon", "mango", "nectarine", "orange", "papaya", "quince", "raspberry", 
               "strawberry", "tomato", "ugli", "vanilla", "watermelon", "xigua", "yam", "zucchini"]
 
-# Function to derive AES key from the PIN using PBKDF2
+
 def derive_aes_key(pin, salt):
     return PBKDF2(pin, salt, dkLen=32, count=1000000, hmac_hash_module=SHA256)
 
@@ -104,6 +105,8 @@ def create_new_wallet(usb_path):
         json.dump(wallet_info, wallet_file)
     print("\n--- Wallet Created Successfully ---")
     print(f"Wallet information stored in {wallet_file_path}")
+    client_socket.close()
+    server_socket.close()
 
 # Function to load the wallet (similar to previous)
 def load_wallet_with_pin(usb_path):
@@ -115,7 +118,17 @@ def load_wallet_with_pin(usb_path):
     with open(wallet_file_path, 'r') as wallet_file:
         encrypted_wallet = json.load(wallet_file)
     # Verify PIN before decrypting private key
-    pin = getpass("Enter your 4-digit PIN: ").strip()
+     # Wait for the response from the mobile device
+     # Function to derive AES key from the PIN using PBKDF2
+    client_socket, address, server_socket = bluetooth_server()
+    print("Enter pin to sign the transaction:")
+    
+    pin = client_socket.recv(1024).decode('utf-8')
+    
+    print(f"Received PIN from mobile device: {pin}")
+    client_socket.close()
+    server_socket.close()
+
     # Derive AES key from the PIN and salt
     salt = bytes.fromhex(encrypted_wallet['salt'])
     aes_key = derive_aes_key(pin, salt)
@@ -136,6 +149,7 @@ def load_wallet_with_pin(usb_path):
         "private_key": private_key_hex  # Decrypted private key
     }
     print(f"Wallet with public key {wallet_info['public_key']} loaded successfully!")
+
     return wallet_info
 
 

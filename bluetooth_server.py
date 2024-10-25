@@ -26,6 +26,7 @@ def main():
         # Wait for the response from the mobile device
         data = client_socket.recv(1024).decode('utf-8')
         print(f"Received PIN from mobile device: {data}")
+        print(data)
 
         if data == pin:
             print("PIN verified successfully! Transaction can be signed.")
