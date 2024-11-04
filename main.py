@@ -9,6 +9,8 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 
+
+MAX_ATTEMPTS = 3
 #Task-
 #1-Main function task is to generate the private key using ecdsa-we are using ecdsa because  bitcoin and ethereum used ecdsa .
 #2-encrypt the private key using AES.
@@ -109,7 +111,7 @@ def create_new_wallet(usb_path):
     server_socket.close()
 
 # Function to load the wallet (similar to previous)
-def load_wallet_with_pin(usb_path):
+def load_wallet_with_pin(usb_path, client_socket, server_socket):
     wallet_file_path = os.path.join(usb_path, "wallet.json")
     # Check if wallet exists
     if not os.path.exists(wallet_file_path):
@@ -120,29 +122,42 @@ def load_wallet_with_pin(usb_path):
     # Verify PIN before decrypting private key
      # Wait for the response from the mobile device
      # Function to derive AES key from the PIN using PBKDF2
-    client_socket, address, server_socket = bluetooth_server()
-    print("Enter pin to sign the transaction:")
-    
-    pin = client_socket.recv(1024).decode('utf-8')
-    
-    print(f"Received PIN from mobile device: {pin}")
-    client_socket.close()
-    server_socket.close()
+   
+     # Track the number of incorrect attempts
+    attempts = 0
 
-    # Derive AES key from the PIN and salt
-    salt = bytes.fromhex(encrypted_wallet['salt'])
-    aes_key = derive_aes_key(pin, salt)
-    try:
-        # Decrypt private key
-        km = KeyManagement(aes_key)
-        private_key_hex = km.decrypt_key(
-            bytes.fromhex(encrypted_wallet['nonce']),
-            bytes.fromhex(encrypted_wallet['ciphertext']),
-            bytes.fromhex(encrypted_wallet['tag'])
-        )
-    except ValueError:
-        print("Decryption failed: MAC check failed. Please try again. Incorrect PIN?")
-        return None
+    while attempts < MAX_ATTEMPTS:
+        print("Enter PIN to sign the transaction:")
+        
+        # Receive PIN from the mobile device
+        pin = client_socket.recv(1024).decode('utf-8')
+        print(f"Received PIN from mobile device: {pin}")
+        
+        # Derive AES key from the PIN and salt
+        salt = bytes.fromhex(encrypted_wallet['salt'])
+        aes_key = derive_aes_key(pin, salt)
+        
+        try:
+            # Decrypt private key
+            km = KeyManagement(aes_key)
+            private_key_hex = km.decrypt_key(
+                bytes.fromhex(encrypted_wallet['nonce']),
+                bytes.fromhex(encrypted_wallet['ciphertext']),
+                bytes.fromhex(encrypted_wallet['tag'])
+            )
+            break  # Exit loop if decryption is successful
+        
+        except ValueError:
+            attempts += 1
+            print(f"Decryption failed: MAC check failed. Incorrect PIN? Attempt {attempts}/{MAX_ATTEMPTS}")
+            
+            if attempts >= MAX_ATTEMPTS:
+                print("Maximum PIN attempts reached. Destroying wallet data...")
+                destroy_wallet(wallet_file_path)  # Call destroy_wallet to securely erase data
+                return None
+            else:
+                time.sleep(1)  # Optional delay for added security
+
     wallet_info = {
         "seed_phrase": encrypted_wallet['seed_phrase'],
         "public_key": encrypted_wallet['public_key'],
@@ -157,6 +172,9 @@ def load_wallet_with_pin(usb_path):
 
 def main():
     usb_path = '/media/aryandev/GPARTED-LIV'
+    print("Intiazing the bluetooth server......")
+    client_socket, address, server_socket = bluetooth_server()
+    print("Bluetooth server initialized successfully!")
     
     while True:
         display_menu()
@@ -164,14 +182,18 @@ def main():
         if choice == '1':
             create_new_wallet(usb_path)
         elif choice == '2':
-            wallet_info = load_wallet_with_pin(usb_path)
+            wallet_info = load_wallet_with_pin(usb_path, client_socket, server_socket)
             if wallet_info:
                 # Example transaction signing using the loaded wallet
                 transaction_data = "Alice sent 10 BTC to Bob"
                 signature = sign_transaction(wallet_info["private_key"], transaction_data)
                 print(f"Transaction Signature: {signature.hex()}")
         elif choice == '3':
+            destroy_wallet(usb_path)
+        elif choice == '4':
             print("Exiting the wallet dashboard. Goodbye!")
+            client_socket.close()
+            server_socket.close()
             break
         else:
             print("Invalid option. Please select a valid option (1-3).")
