@@ -8,6 +8,10 @@ from getpass import getpass
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
+import RPi.GPIO as GPIO
+import time
+
+
 
 
 MAX_ATTEMPTS = 3
@@ -149,6 +153,7 @@ def load_wallet_with_pin(usb_path, client_socket, server_socket):
         
         except ValueError:
             attempts += 1
+            single_beep()
             print(f"Decryption failed: MAC check failed. Incorrect PIN? Attempt {attempts}/{MAX_ATTEMPTS}")
             
             if attempts >= MAX_ATTEMPTS:
@@ -164,6 +169,7 @@ def load_wallet_with_pin(usb_path, client_socket, server_socket):
         "private_key": private_key_hex  # Decrypted private key
     }
     print(f"Wallet with public key {wallet_info['public_key']} loaded successfully!")
+
 
     return wallet_info
 
@@ -188,6 +194,7 @@ def main():
                 transaction_data = "Alice sent 10 BTC to Bob"
                 signature = sign_transaction(wallet_info["private_key"], transaction_data)
                 print(f"Transaction Signature: {signature.hex()}")
+                led_blink(1)  # Blink LED once to indicate successful signed transaction.
         elif choice == '3':
             destroy_wallet(usb_path)
         elif choice == '4':
